@@ -1,0 +1,13 @@
+vendaflow-sqlite/
+├── settings.gradle.kts
+├── build.gradle.kts
+└── src/
+    └── main/
+        ├── kotlin/
+        │   └── com/
+        │       └── vendaflow/
+        │           ├── Database.kt
+        │           └── Application.kt
+        └── resources/
+            └── static/
+                └── index.html
