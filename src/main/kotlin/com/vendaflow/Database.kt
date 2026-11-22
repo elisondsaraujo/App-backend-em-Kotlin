@@ -48,8 +48,21 @@ data class ResumoDashboard(
 )
 
 object Database {
-    private const val DB_URL = "jdbc:sqlite:vendaflow.db"
+    private val DB_URL = "jdbc:sqlite:" + (System.getenv("DB_PATH") ?: "vendaflow.db")
     private val lock = Any()
+
+    private const val COLS = "id, nome, email, telefone, valor, status, created_at"
+
+    private fun java.sql.ResultSet.toRegistro() = RegistroVenda(
+        id = getLong("id"),
+        nome = getString("nome"),
+        email = getString("email"),
+        telefone = getString("telefone"),
+        valor = getDouble("valor"),
+        status = getString("status"),
+        createdAt = getLong("created_at")
+    )
+
 
     val validStatuses = listOf("Concluída", "Pendente", "Em Negociação", "Cancelada")
 
@@ -131,13 +144,20 @@ object Database {
 
     fun restaurarExemplos() {
         withConnection { conn ->
-            conn.createStatement().use { st -> st.execute("DELETE FROM registros") }
-            insertSampleRecords(conn)
+            conn.autoCommit = false
+            try {
+                conn.createStatement().use { st -> st.execute("DELETE FROM registros") }
+                insertSampleRecords(conn)
+                conn.commit()
+            } catch (e: Exception) {
+                conn.rollback()
+                throw e
+            }
         }
     }
 
     fun listar(query: String, status: String, sort: String): List<RegistroVenda> = withConnection { conn ->
-        val sql = StringBuilder("SELECT id, nome, email, telefone, valor, status, created_at FROM registros WHERE 1=1")
+        val sql = StringBuilder("SELECT $COLS FROM registros WHERE 1=1")
         val params = mutableListOf<String>()
 
         if (query.isNotBlank()) {
@@ -167,15 +187,7 @@ object Database {
                 val list = mutableListOf<RegistroVenda>()
                 while (rs.next()) {
                     list.add(
-                        RegistroVenda(
-                            id = rs.getLong("id"),
-                            nome = rs.getString("nome"),
-                            email = rs.getString("email"),
-                            telefone = rs.getString("telefone"),
-                            valor = rs.getDouble("valor"),
-                            status = rs.getString("status"),
-                            createdAt = rs.getLong("created_at")
-                        )
+                        rs.toRegistro()
                     )
                 }
                 list
@@ -231,15 +243,7 @@ object Database {
             ps.setLong(1, id)
             ps.executeQuery().use { rs ->
                 if (!rs.next()) null
-                else RegistroVenda(
-                    id = rs.getLong("id"),
-                    nome = rs.getString("nome"),
-                    email = rs.getString("email"),
-                    telefone = rs.getString("telefone"),
-                    valor = rs.getDouble("valor"),
-                    status = rs.getString("status"),
-                    createdAt = rs.getLong("created_at")
-                )
+                else rs.toRegistro()
             }
         }
     }
@@ -286,15 +290,7 @@ object Database {
             st.executeQuery(recentSql).use { rs ->
                 while (rs.next()) {
                     recentes.add(
-                        RegistroVenda(
-                            id = rs.getLong("id"),
-                            nome = rs.getString("nome"),
-                            email = rs.getString("email"),
-                            telefone = rs.getString("telefone"),
-                            valor = rs.getDouble("valor"),
-                            status = rs.getString("status"),
-                            createdAt = rs.getLong("created_at")
-                        )
+                        rs.toRegistro()
                     )
                 }
             }
