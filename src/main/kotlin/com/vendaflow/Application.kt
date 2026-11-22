@@ -20,7 +20,9 @@ data class ErroResposta(val erro: String)
 fun main() {
     Database.init()
 
-    embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
+    val port = System.getenv("PORT")?.toIntOrNull() ?: 8080
+
+    embeddedServer(Netty, port = port, host = "0.0.0.0") {
         configureApp()
     }.start(wait = true)
 }
